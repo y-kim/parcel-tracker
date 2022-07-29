@@ -1,0 +1,5 @@
+natsort
+python-telegram-bot
+pyyaml
+requests
+lxml
