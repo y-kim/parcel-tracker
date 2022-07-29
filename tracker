@@ -30,8 +30,10 @@ class ParcelTracker():
 
         self.logistics_dir = 'logistics'
         self.logistics = {}
+        self.logistics_disabled = {}
         self.airlines_dir = 'airlines'
         self.airlines = {}
+        self.airlines_disabled = {}
 
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0',
@@ -47,14 +49,20 @@ class ParcelTracker():
             if basename(path) not in ('__init__.py', 'base.py'):
                 name = splitext(path)[0].replace('/','.')
                 plugin = importlib.import_module(name).Logistics(self)
-                self.logistics[plugin.get_code()] = plugin
+                if plugin.disabled:
+                    self.logistics_disabled[plugin.get_code()] = plugin
+                else:
+                    self.logistics[plugin.get_code()] = plugin
 
         # read airlines plugins
         for path in glob.glob('{}/*.py'.format(self.airlines_dir)):
             if basename(path) not in ('__init__.py', 'base.py'):
                 name = splitext(path)[0].replace('/','.')
                 plugin = importlib.import_module(name).Logistics(self)
-                self.airlines[plugin.get_code()] = plugin
+                if plugin.disabled:
+                    self.airlines_disabled[plugin.get_code()] = plugin
+                else:
+                    self.airlines[plugin.get_code()] = plugin
 
     def save_info(self):
         with open(self.dumpfile_name, 'wb') as f:
@@ -128,6 +136,12 @@ class ParcelTracker():
 
         print('Processing: {} / {}, {}'.format(name, trackno, logicode))
 
+        if logicode in self.logistics_disabled:
+            print('더 이상 지원하지 않는 택배사입니다.')
+            return
+        elif logicode not in self.logistics:
+            print('등록되지 않은 택배사 코드입니다.')
+            return
         logi = self.logistics[logicode]
         modified, msg = self.fetch(logi, logicode, trackno, name, year)
 
@@ -154,6 +168,31 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # print list of logistics
+    if args.logistics:
+        tracker = ParcelTracker(None)
+
+        message = ['현재 지원하는 택배사입니다.']
+        message.append('----------------------------------------')
+        for key in sorted(tracker.logistics):
+            message.append('{:10s} {}'.format(key, tracker.logistics[key].get_name()))
+
+        message.append('')
+        message.append('더이상 지원하지 않는 택배사입니다.')
+        message.append('----------------------------------------')
+        for key in sorted(tracker.logistics_disabled):
+            message.append('{:10s} {}'.format(key, tracker.logistics_disabled[key].get_name()))
+
+        message.append('')
+        message.append('더이상 지원하지 않는 항공편입니다.')
+        message.append('----------------------------------------')
+        for key in sorted(tracker.airlines_disabled):
+            message.append('{:10s} {}'.format(key, tracker.airlines_disabled[key].get_name()))
+
+        print('\n'.join(message))
+
+        exit(0)
+
     # prepare Telegram bot
     if (args.upd_to_tg or args.err_to_tg) and not args.test:
         if not isfile(args.config):
@@ -176,10 +215,9 @@ if __name__ == '__main__':
     # get list of parcels
     if args.test:
         parcels = [{
-            'Description': 'Description',
-            'Company': args.test[0],
-            'ID': args.test[1],
-            'Year': 2022
+            'Name': 'Name',
+            'LogiCode': args.test[0],
+            'TrackNo': args.test[1],
         }]
     else:
         if not isfile(args.parcels):
