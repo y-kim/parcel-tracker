@@ -8,17 +8,20 @@ ProgV1 = namedtuple('ProgV1', 'dt loc code desc')
 ProgV2 = namedtuple('ProgV2', 'dt desc')
 ProgV3 = namedtuple('ProgV3', 'dt loc desc')
 ProgV4 = namedtuple('ProgV4', 'dt loc desc desc2')
+ProgV5 = namedtuple('ProgV5', 'dt code desc')
 
 def decorate_prog(prog):
     dt = prog.dt.strftime('%m/%d %H:%M')
     if isinstance(prog, ProgV1):
-        decorated = '{} ({}) - {}: {}'.format(dt, prog.loc, prog.code, prog.desc)
+        decorated = '{} ({}) - [{}] {}'.format(dt, prog.loc, prog.code, prog.desc)
     elif isinstance(prog, ProgV2):
         decorated = '{} - {}'.format(dt, prog.desc)
     elif isinstance(prog, ProgV3):
         decorated = '{} ({}) - {}'.format(dt, prog.loc, prog.desc)
     elif isinstance(prog, ProgV4):
         decorated = '{} ({}) - {} / {}'.format(dt, prog.loc, prog.desc, prog.desc2)
+    elif isinstance(prog, ProgV5):
+        decorated = '{} - [{}] {}'.format(dt, prog.code, prog.desc)
 
     return decorated
 
