@@ -1,3 +1,12 @@
+# configuration files have confidentials and personal information
+config.yaml
+parcels.yaml
+
+# all files dumped into
+db/
+raw/
+
+# Created by Github
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
