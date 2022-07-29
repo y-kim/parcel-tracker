@@ -18,9 +18,10 @@ python3 -m pip install -r requirements.txt
 
 cofing.tmpl.yaml 파일을 config.yaml로 복사한 뒤 각 항목을 채워줍니다. Telegram 봇의 발급 및 채널 생성 방식은 Telegram의 매뉴얼을 확인해 주세요.
 ```yaml
-token: Telegram에서 생성한 봇의 토큰을 넣어줍니다.
-chat-id: 알람을 받을 채널 ID를 넣어줍니다.
-err-chat-id: Python의 에러 메시지를 받는 경우 이 알람을 받을 채널 ID를 넣어줍니다.
+telegram:
+  token: Telegram에서 생성한 봇의 토큰을 넣어줍니다.
+  chat-id: 알람을 받을 채널 ID를 넣어줍니다.
+  err-chat-id: Python의 에러 메시지를 받는 경우 이 알람을 받을 채널 ID를 넣어줍니다.
 ```
 
 ### 스케줄러 추가

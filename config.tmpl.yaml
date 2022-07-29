@@ -1,4 +1,9 @@
 # copy this file to 'config.yaml' and fill the following entries
-token: '0000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-chat-id: -1000000000000
-err-chat-id: -1000000000000
+telegram:
+  token: '0000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+  chat-id: -1000000000000
+  err-chat-id: -1000000000000
+
+# if you want to track DHL then please register from https://developer.dhl/ and optain key
+#dhl:
+#  key:
