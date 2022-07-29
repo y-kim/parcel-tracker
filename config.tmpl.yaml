@@ -1,0 +1,4 @@
+# copy this file to 'config.yaml' and fill the following entries
+token: '0000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+chat-id: -1000000000000
+err-chat-id: -1000000000000

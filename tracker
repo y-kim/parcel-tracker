@@ -1,0 +1,196 @@
+#!/usr/bin/env python3
+
+import glob
+from argparse import ArgumentParser
+from datetime import date
+import importlib
+import logging
+from natsort import natsorted
+from os.path import basename, getsize as getfilesize, isfile, splitext
+import pickle
+import requests
+import sys
+import traceback
+import yaml
+
+from BaseLogistics import *
+from MyTelegram import Telegram, TelegramHandler
+
+def my_excepthook(logger, typ, value, err_trace):
+    logger.critical(u"%s: %s\n\nTraceback: %s" % (typ.__name__, value, ''.join(traceback.format_tb(err_trace))));
+
+class ParcelTracker():
+    def __init__(self, tg):
+        self.cfg_save_raw = True
+        self.cfg_raw_dir = 'raw'
+        self.cfg_timeout = 2
+        self.cfg_db_dir = 'db'
+
+        self.tg = tg
+
+        self.logistics_dir = 'logistics'
+        self.logistics = {}
+        self.airlines_dir = 'airlines'
+        self.airlines = {}
+
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        }
+
+        self.session = requests.Session()
+        self.session.mount('http://', requests.adapters.HTTPAdapter(max_retries=10))
+        self.session.mount('https://', requests.adapters.HTTPAdapter(max_retries=10))
+
+        # read logistics plugins
+        for path in glob.glob('{}/*.py'.format(self.logistics_dir)):
+            if basename(path) not in ('__init__.py', 'base.py'):
+                name = splitext(path)[0].replace('/','.')
+                plugin = importlib.import_module(name).Logistics(self)
+                self.logistics[plugin.get_code()] = plugin
+
+        # read airlines plugins
+        for path in glob.glob('{}/*.py'.format(self.airlines_dir)):
+            if basename(path) not in ('__init__.py', 'base.py'):
+                name = splitext(path)[0].replace('/','.')
+                plugin = importlib.import_module(name).Logistics(self)
+                self.airlines[plugin.get_code()] = plugin
+
+    def save_info(self):
+        with open(self.dumpfile_name, 'wb') as f:
+            pickle.dump(self.info, f, pickle.HIGHEST_PROTOCOL)
+            f.close()
+
+    def fetch(self, logi, logicode, trackno, name, year):
+        # actually here exist body
+        info = logi.process(trackno, year)
+        prev_info = get_info_base()
+
+        # read previous log history
+        dumpfile_name = '{}/{}.{}'.format(self.cfg_db_dir, trackno, logicode)
+        if not isfile(dumpfile_name) or getfilesize(dumpfile_name) == 0:
+            prev_info = get_info_base()
+        else:
+            with open(dumpfile_name, 'rb') as f:
+                prev_info = pickle.load(f)
+
+        # some progress may missing, so update it inrementally
+        tmp_prog_info = list(prev_info['prog'])
+        for prog in info['prog']:
+            if prog not in tmp_prog_info:
+                tmp_prog_info.append(prog)
+        info['prog'] = tmp_prog_info
+
+        # save information into class. data will be save after sending message into Telegram or stdout
+        self.info = info
+        self.dumpfile_name = dumpfile_name
+
+        # creage message
+        msg = []
+        msg.append(logi.get_name())
+        msg.append('%s (%s)' % (name, trackno))
+        msg.append('')
+
+        info_modified = False
+        for key in info['info']:
+            var = info['info'][key]
+            if key not in prev_info['info']:
+                msg.append('%s: %s' % (key, var))
+                info_modified = True
+            elif var != prev_info['info'][key]:
+                msg.append('%s: %s → %s' % (key, prev_info['info'][key], var))
+                info_modified = True
+
+        if info_modified:
+            msg.append('')
+
+        prog_modified = False
+        for i in range(min(len(info['prog']), len(prev_info['prog']))):
+            if info['prog'][i] != prev_info['prog'][i]:
+                msg.append('⇍ {}'.format(decorate_prog(prev_info['prog'][i])))
+                msg.append('⇒ {}'.format(decorate_prog(info['prog'][i])))
+                prog_modified = True
+
+        for i in range(len(prev_info['prog']), len(info['prog'])):
+            msg.append('⦁ {}'.format(decorate_prog(info['prog'][i])))
+            prog_modified = True
+
+        if prog_modified:
+            msg.append('')
+
+        return info_modified or prog_modified, msg
+
+    def proc_parcel(self, logicode, trackno, name, year, checked=set()):
+        if logicode in checked:
+            return
+        else:
+            checked.add(logicode)
+
+        print('Processing: {} / {}, {}'.format(name, trackno, logicode))
+
+        logi = self.logistics[logicode]
+        modified, msg = self.fetch(logi, logicode, trackno, name, year)
+
+        if modified:
+            total_msg = '\n'.join(msg)
+            if self.tg:
+                tg.send_message(total_msg)
+            else:
+                print(total_msg)
+
+            self.save_info()
+
+        for nlogicode in logi.next:
+            self.proc_parcel(nlogicode, trackno, name, year, checked)
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description='tracks internationl deliveries without risk of information leakage into 3rd parties')
+    parser.add_argument('-p', '--parcels', type=str, default='parcels.yaml', help='yaml-based file containing list of parcels [default: %(default)s]')
+    parser.add_argument('-c', '--config', type=str, default='config.yaml', help='configuration file containing Telegram credentials and channel IDs. Used when -u and/or -e options are enabled [default: %(default)s]')
+    parser.add_argument('-u', '--upd-to-tg', action='store_true', help='send delivery status into the telegram channel in the configuraion')
+    parser.add_argument('-e', '--err-to-tg', action='store_true', help='emit error messages to the telegram channel in the configuration')
+    parser.add_argument('-l', '--logistics', action='store_true', help='print list of logistics')
+    parser.add_argument('-t', '--test', nargs=2, metavar=('LOGICODE', 'TRAKNONO'), help='track configured tracking number only')
+
+    args = parser.parse_args()
+
+    # prepare Telegram bot
+    if (args.upd_to_tg or args.err_to_tg) and not args.test:
+        if not isfile(args.config):
+            raise Exception('Cannot find configration file {}'.format(args.config))
+        with open(args.config, 'r') as f:
+            config = yaml.load(f)
+
+        tg = Telegram(config['token'], config['chat-id'], '해외 배송 소식')
+
+        if args.err_to_tg:
+            telegram_handler = TelegramHandler(tg, config['err-chat-id'])
+            logger = logging.getLogger()
+            logger.addHandler(telegram_handler)
+
+            func = lambda typ, value, traceback: my_excepthook(logger, typ, value, traceback)
+            sys.excepthook = func
+    else:
+        tg = None
+
+    # get list of parcels
+    if args.test:
+        parcels = [{
+            'Description': 'Description',
+            'Company': args.test[0],
+            'ID': args.test[1],
+            'Year': 2022
+        }]
+    else:
+        if not isfile(args.parcels):
+            raise Exception('Cannot find parcel files')
+        with open(args.parcels, 'r') as f:
+            parcels = yaml.load(f)
+
+    # prepare tracker
+    tracker = ParcelTracker(tg)
+    this_year = date.today().strftime('y') 
+
+    if parcels:
+        for parcel in parcels:
+            tracker.proc_parcel(parcel['LogiCode'], parcel['TrackNo'], parcel['Name'], parcel.get('Year', this_year), set())

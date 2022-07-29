@@ -1,0 +1,4 @@
+- Name: 'Name of the parcel'
+  LogiCode: 'logistics code. Use -l (--logistics) to get list of supported logistics'
+  TrackNo: 'tracking number' 
+  Year: 2022 # Use seldomly. However must exist for unipass.
