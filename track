@@ -128,34 +128,34 @@ class ParcelTracker():
 
         return info_modified or prog_modified, msg
 
-    def proc_parcel(self, logicode, trackno, name, year, checked=set()):
-        if logicode in checked:
-            return
-        else:
-            checked.add(logicode)
-
-        print('Processing: {} / {}, {}'.format(name, trackno, logicode))
-
-        if logicode in self.logistics_disabled:
-            print('더 이상 지원하지 않는 택배사입니다.')
-            return
-        elif logicode not in self.logistics:
-            print('등록되지 않은 택배사 코드입니다.')
-            return
-        logi = self.logistics[logicode]
-        modified, msg = self.fetch(logi, logicode, trackno, name, year)
-
-        if modified:
-            total_msg = '\n'.join(msg)
-            if self.tg:
-                tg.send_message(total_msg)
+    def proc_parcel(self, logicodes, trackno, name, year, checked=set()):
+        for logicode in logicodes:
+            if logicode in checked:
+                continue
             else:
-                print(total_msg)
+                checked.add(logicode)
 
-            self.save_info()
+            print('Processing: {} / {}, {}'.format(name, trackno, logicode))
 
-        for nlogicode in logi.next:
-            self.proc_parcel(nlogicode, trackno, name, year, checked)
+            if logicode in self.logistics_disabled:
+                print('더 이상 지원하지 않는 택배사입니다.')
+                return
+            elif logicode not in self.logistics:
+                print('등록되지 않은 택배사 코드입니다.')
+                return
+            logi = self.logistics[logicode]
+            modified, msg = self.fetch(logi, logicode, trackno, name, year)
+
+            if modified:
+                total_msg = '\n'.join(msg)
+                if self.tg:
+                    tg.send_message(total_msg)
+                else:
+                    print(total_msg)
+
+                self.save_info()
+
+            self.proc_parcel(logi.next, trackno, name, year, checked)
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='tracks internationl deliveries without risk of information leakage into 3rd parties')
@@ -227,9 +227,10 @@ if __name__ == '__main__':
             parcels = yaml.load(f)
 
     # prepare tracker
-    tracker = ParcelTracker(tg)
+    tracker = ParcelTracker(tg, config)
     this_year = date.today().strftime('y') 
 
     if parcels:
         for parcel in parcels:
-            tracker.proc_parcel(parcel['LogiCode'], parcel['TrackNo'], parcel['Name'], parcel.get('Year', this_year), set())
+            logicodes = (x.strip() for x in parcel['LogiCodes'].split(','))
+            tracker.proc_parcel(logicodes, parcel['TrackNo'], parcel['Name'], parcel.get('Year', this_year), set())

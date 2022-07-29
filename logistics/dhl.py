@@ -1,50 +1,50 @@
 from BaseLogistics import *
 
-def dhl_date_to_short(date):
-    return short_month_name(date.split(', ')[1])
+def clean_desc(desc):
+    sp = desc.find('(Homepage')
+    if sp >= 0:
+        desc = desc[0:sp].strip()
+    return desc
 
 class Logistics(BaseLogistics):
     def __init__(self, tracker):
         super(Logistics, self).__init__(tracker)
         self.code = 'dhl'
         self.name = 'DHL'
-        self.disabled = True
+        self.timef = '%Y-%m-%dT%H:%M:%S'
+
+        self.config = tracker.config.get('dhl',None)
 
         self.add_query(
             'get', 'json',
-            'http://www.dhl.com/shipmentTracking',
-            params = {
-                'countryCode': 'g0',
-                'languageCode': 'en',
-            }
+            'https://api-eu.dhl.com/track/shipments'
         )
 
-    def process(self, pid, year):
-        self.params['AWB'] = pid
+    def process(self, trackNo, year):
+        info = get_info_base()
+        if not self.config:
+            print('https://developer.dhl/ 등록 후 키를 발급 받으세요')
+            return info
+
+        self.headers['DHL-API-Key'] = self.config['key']
+        self.params['trackingNumber'] = trackNo
         self.fetch(True)
 
-        info = get_info_base()
-        dict_data = slef.root['results'][0]
-        info['info'][dict_data['label']] = dict_data['id']
-        info['info']['항선구분'] = dict_data['type']
-        info['info']['Origin'] = dict_data['origin']['value']
-        info['info']['Destination'] = dict_data['destination']['value']
-        info['info']['현상황'] = dict_data['description'].replace(' - KOREA, REPUBLIC OF (SOUTH K.)', '').replace(' OUTSKIRT OF SEOUL', '')
-        if 'edd' in dict_data:
-            if 'date' in dict_data['edd']:
-                info['info']['도착예정'] = '%s, %s' % (dhl_date_to_short(dict_data['edd']['date']), dict_data['edd']['product'])
-            else:
-                info['info']['도착예정'] = '%s' % (dict_data['edd']['product'])
+        if 'shipments' in self.root and len(self.root['shipments']) == 1:
+            ship = self.root['shipments'][0]
+            info['info']['서비스'] = ship['service']
+            info['info']['제품'] = ship['details']['product']['productName']
+            info['info']['출발지'] = ship['origin']['address']['countryCode']
+            info['info']['도착지'] = ship['destination']['address']['countryCode']
+            info['info']['무게'] = '{value} {unitText}'.format(**ship['details']['weight'])
+            info['info']['현위치'] = ship['status']['location']['address']['addressLocality']
+            info['info']['상태'] = ship['status']['statusCode']
+            info['info']['시간'] = datetime.strptime(ship['status']['timestamp'], self.timef)
 
-        info['info']['수량'] = str(dict_data['pieces']['value'])
-
-        for checkpoint in reversed(dict_data['checkpoints']):
-            desc = '%s %s %s - %s' % (dhl_date_to_short(checkpoint['date']),
-                                      checkpoint['time'],
-                                      checkpoint['location'].replace(' - ', ', ').replace(', KOREA, REPUBLIC OF (SOUTH K.)', '').replace(' OUTSKIRT OF SEOUL', ''),
-                                      checkpoint['description'].replace(checkpoint['location'], '').strip())
-            info['prog'].append(desc)
-        info['prog'] = natsorted(info['prog'])
-
+            for event in reversed(ship['events']):
+                if 'location' in event:
+                    info['prog'].append(ProgV1(datetime.strptime(event['timestamp'], self.timef), event['location']['address']['addressLocality'], event['statusCode'], clean_desc(event['description'])))
+                else:
+                    info['prog'].append(ProgV5(datetime.strptime(event['timestamp'], self.timef), event['statusCode'], clean_desc(event['description'])))
 
         return info
