@@ -1,4 +1,14 @@
 from BaseLogistics import *
+import pycountry
+
+def get_address(addr):
+    addr = addr['address']
+    if 'addressLocality' in addr:
+        return addr['addressLocality']
+    elif 'countryCode' in addr:
+        return pycountry.countries.get(alpha_2=addr['countryCode']).name
+    else:
+        return str(addr)
 
 def clean_desc(desc):
     sp = desc.find('(Homepage')
@@ -34,16 +44,16 @@ class Logistics(BaseLogistics):
             ship = self.root['shipments'][0]
             info['info']['서비스'] = ship['service']
             info['info']['제품'] = ship['details']['product']['productName']
-            info['info']['출발지'] = ship['origin']['address']['countryCode']
-            info['info']['도착지'] = ship['destination']['address']['countryCode']
+            info['info']['출발지'] = get_address(ship['origin'])
+            info['info']['도착지'] = get_address(ship['destination'])
             info['info']['무게'] = '{value} {unitText}'.format(**ship['details']['weight'])
-            info['info']['현위치'] = ship['status']['location']['address']['addressLocality']
+            info['info']['현위치'] = get_address(ship['status']['location'])
             info['info']['상태'] = ship['status']['statusCode']
             info['info']['시간'] = datetime.strptime(ship['status']['timestamp'], self.timef)
 
             for event in reversed(ship['events']):
                 if 'location' in event:
-                    info['prog'].append(ProgV1(datetime.strptime(event['timestamp'], self.timef), event['location']['address']['addressLocality'], event['statusCode'], clean_desc(event['description'])))
+                    info['prog'].append(ProgV1(datetime.strptime(event['timestamp'], self.timef), get_address(event['location']), event['statusCode'], clean_desc(event['description'])))
                 else:
                     info['prog'].append(ProgV5(datetime.strptime(event['timestamp'], self.timef), event['statusCode'], clean_desc(event['description'])))
 
