@@ -20,11 +20,12 @@ def my_excepthook(logger, typ, value, err_trace):
     logger.critical(u"%s: %s\n\nTraceback: %s" % (typ.__name__, value, ''.join(traceback.format_tb(err_trace))));
 
 class ParcelTracker():
-    def __init__(self, tg):
+    def __init__(self, tg, config):
         self.cfg_save_raw = True
         self.cfg_raw_dir = 'raw'
         self.cfg_timeout = 2
         self.cfg_db_dir = 'db'
+        self.config = config
 
         self.tg = tg
 
