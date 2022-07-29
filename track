@@ -198,7 +198,7 @@ if __name__ == '__main__':
     if not isfile(args.config):
         raise Exception('Cannot find configration file {}'.format(args.config))
     with open(args.config, 'r') as f:
-        config = yaml.load(f)
+        config = yaml.load(f, Loader=yaml.SafeLoader)
 
     # prepare Telegram bot
     if (args.upd_to_tg or args.err_to_tg) and not args.test:
@@ -225,7 +225,7 @@ if __name__ == '__main__':
         if not isfile(args.parcels):
             raise Exception('Cannot find parcel files')
         with open(args.parcels, 'r') as f:
-            parcels = yaml.load(f)
+            parcels = yaml.load(f, Loader=yaml.SafeLoader)
 
     # prepare tracker
     tracker = ParcelTracker(tg, config)
