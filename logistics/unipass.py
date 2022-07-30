@@ -170,11 +170,9 @@ class Logistics(BaseLogistics):
                     info['info'][key] = var
 
             for item in reversed(self.root['resultListL']):
-                desc = item['cargTrcnRelaBsopTpcd']
+                desc = html.unescape(item['cargTrcnRelaBsopTpcd'])
                 if desc == '하기결과 보고':
-                    if item['rlbrBssNo'] in self.uld_code:
-                        desc = '%s (%s)' % (desc, self.uld_code[item['rlbrBssNo']])
-                desc = desc.replace('&#40;','(').replace('&#41;', ')')
+                    desc = '{} ({})'.format(desc, self.uld_code.get(item['rlbrBssNo'], item['rlbrBssNo']))
                 info['prog'].append(ProgV2(self.parse_time(item['prcsDttm']), desc))
 
         return info
