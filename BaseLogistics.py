@@ -123,6 +123,9 @@ class BaseLogistics():
     def get_name(self):
         return self.name
 
+    def parse_time(self, time):
+        return datetime.strptime(time, self.timef)
+
     def save_raw(self, raw_data, ext):
         with open('{}/{}.{}'.format(self.cfg_raw_dir, self.code, ext), 'w') as f:
             f.write(raw_data)

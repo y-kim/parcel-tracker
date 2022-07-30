@@ -8,6 +8,7 @@ class Logistics(BaseLogistics):
         self.name = '대한민국 통관'
 
         # other options
+        self.timef = '%Y%m%d%H%M%S'
         self.headers['X-Requested-With'] = 'XMLHttpRequest'
 
         # fetch 0: get session information
@@ -174,6 +175,6 @@ class Logistics(BaseLogistics):
                     if item['rlbrBssNo'] in self.uld_code:
                         desc = '%s (%s)' % (desc, self.uld_code[item['rlbrBssNo']])
                 desc = desc.replace('&#40;','(').replace('&#41;', ')')
-                info['prog'].append(ProgV2(datetime.strptime(item['prcsDttm'],'%Y%m%d%H%M%S'), desc))
+                info['prog'].append(ProgV2(self.parse_time(item['prcsDttm']), desc))
 
         return info

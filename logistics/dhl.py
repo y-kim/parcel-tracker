@@ -49,12 +49,12 @@ class Logistics(BaseLogistics):
             info['info']['무게'] = '{value} {unitText}'.format(**ship['details']['weight'])
             info['info']['현위치'] = get_address(ship['status']['location'])
             info['info']['상태'] = ship['status']['statusCode']
-            info['info']['시간'] = datetime.strptime(ship['status']['timestamp'], self.timef)
+            info['info']['시간'] = self.parse_time(ship['status']['timestamp'])
 
             for event in reversed(ship['events']):
                 if 'location' in event:
-                    info['prog'].append(ProgV1(datetime.strptime(event['timestamp'], self.timef), get_address(event['location']), event['statusCode'], clean_desc(event['description'])))
+                    info['prog'].append(ProgV1(self.parse_time(event['timestamp']), get_address(event['location']), event['statusCode'], clean_desc(event['description'])))
                 else:
-                    info['prog'].append(ProgV5(datetime.strptime(event['timestamp'], self.timef), event['statusCode'], clean_desc(event['description'])))
+                    info['prog'].append(ProgV5(self.parse_time(event['timestamp']), event['statusCode'], clean_desc(event['description'])))
 
         return info

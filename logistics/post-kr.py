@@ -8,6 +8,8 @@ class Logistics(BaseLogistics):
         self.name = '대한민국 우체국'
         self.next = ('unipass',)
 
+        self.timef = '%Y.%m.%d %H:%M'
+
         self.add_query(
             'post', 'html',
             'https://service.epost.go.kr/trace.RetrieveEmsRigiTraceList.comm',
@@ -58,8 +60,8 @@ class Logistics(BaseLogistics):
                         info['info'][key] = var
             message = ', '.join(messages)
             if message:
-                info['prog'].append(ProgV1(datetime.strptime(time, '%Y.%m.%d %H:%M'), po, code, message))
+                info['prog'].append(ProgV1(self.parse_time(time), po, code, message))
             else:
-                info['prog'].append(ProgV3(datetime.strptime(time, '%Y.%m.%d %H:%M'), po, code))
+                info['prog'].append(ProgV3(self.parse_time(time), po, code))
 
         return info
