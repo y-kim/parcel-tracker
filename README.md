@@ -16,8 +16,15 @@ python3 -m pip install -r requirements.txt
 
 ### config.yaml 파일 설정
 
-cofing.tmpl.yaml 파일을 config.yaml로 복사한 뒤 각 항목을 채워줍니다. Telegram 봇의 발급 및 채널 생성 방식은 Telegram의 매뉴얼을 확인해 주세요.
+cofing.tmpl.yaml 파일을 config.yaml로 복사한 뒤 각 항목을 채워줍니다. Telegram 봇의 발급 및 채널 생성 방식은 Telegram의 매뉴얼을 확인해 주세요. MongoDB를 사용할 경우 driver를 mongodb로 바꾸어 주세요.GG
 ```yaml
+database:
+  driver: file # support: file, mongodb
+  host: localhost
+  port: 27017
+  database: parcel-tracker
+  user: '' # '' mean no authentication required
+  pwd: ''
 telegram:
   token: Telegram에서 생성한 봇의 토큰을 넣어줍니다.
   chat-id: 알람을 받을 채널 ID를 넣어줍니다.
@@ -60,6 +67,8 @@ telegram:
 패키지 내에는 다양한 택배사가 등록되어 있으나 해당 조회는 2020년 이전에 작성된 것이라 현재는 동작하지 않습니다.
 
 ## 기타
+
+이 텔레그램 봇은 제가 직구하여 해외에서 받을 물건이 있을 때만 업데이트 됩니다.
 
 ### ToDo
 
