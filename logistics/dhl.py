@@ -31,7 +31,7 @@ class Logistics(BaseLogistics):
         )
 
     def process(self, trackNo, year):
-        info = get_info_base()
+        info = get_info_base(self.code, trackNo)
         if not self.config:
             print('https://developer.dhl/ 등록 후 키를 발급 받으세요')
             return info

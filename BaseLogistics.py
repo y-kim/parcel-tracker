@@ -10,6 +10,17 @@ ProgV3 = namedtuple('ProgV3', 'dt loc desc')
 ProgV4 = namedtuple('ProgV4', 'dt loc desc desc2')
 ProgV5 = namedtuple('ProgV5', 'dt code desc')
 
+namedtuple_map = {
+    'ProgV1': ProgV1,
+    'ProgV2': ProgV2,
+    'ProgV3': ProgV3,
+    'ProgV4': ProgV4,
+    'ProgV5': ProgV5,
+}
+
+def make_namedtuple(data):
+    return namedtuple_map[data[0]](*data[1:])
+
 def decorate_prog(prog):
     dt = prog.dt.strftime('%m/%d %H:%M')
     if isinstance(prog, ProgV1):
@@ -31,10 +42,13 @@ def strip_spaces(text):
 def remove_pre0(zerotext):
     return re.sub('0(\d+)', r'\1', zerotext)
 
-def get_info_base():
+def get_info_base(logicode, trackno):
     info = {}
+    info['logicode'] = logicode
+    info['trackno'] = trackno
     info['info'] = OrderedDict()
     info['prog'] = []
+    info['err'] = []
     return info
 
 def make_24h(time_12h):

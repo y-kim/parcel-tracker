@@ -8,9 +8,11 @@ import logging
 from natsort import natsorted
 from os.path import basename, getsize as getfilesize, isfile, splitext
 import pickle
+import pymongo
 import requests
 import sys
 import traceback
+from urllib.parse import quote_plus
 import yaml
 
 from BaseLogistics import *
@@ -65,23 +67,62 @@ class ParcelTracker():
                 else:
                     self.airlines[plugin.get_code()] = plugin
 
-    def save_info(self):
-        with open(self.dumpfile_name, 'wb') as f:
-            pickle.dump(self.info, f, pickle.HIGHEST_PROTOCOL)
-            f.close()
+        #initialize database
+        self.use_db = self.__init_db()
+
+    def __init_db(self):
+        # connection to DB
+        db_cfg = self.config['database']
+        if db_cfg['driver'] == 'mongodb':
+            if db_cfg['user']:
+                if not db_cfg.get('pwd', None):
+                    print('No password provided for the mongodb')
+                    exit(1)
+                auth = '{}:{}@'.format(quote_plus(db_cfg['user']), quote_plus(db_cfg['pwd']))
+            else:
+                auto = ''
+            client = pymongo.MongoClient('mongodb://{auth}{host}:{port}/{database}'.format(auth=auth, **db_cfg))
+            db = client[db_cfg['database']]
+            self.db_tracks = db.tracks
+            self.db_logics = db.logis
+
+            return True
+        else:
+            return False
+
+    def get_track(self, logicode, trackno):
+        if self.use_db:
+            prev_info = self.db_tracks.find_one({'logicode': logicode, 'trackno': trackno})
+            if prev_info:
+                prev_info['prog'] = [make_namedtuple(prog) for prog in prev_info['prog']]
+        else:
+            if not isfile(dumpfile_name) or getfilesize(dumpfile_name) == 0:
+                prev_info = None
+            else:
+                with open(dumpfile_name, 'rb') as f:
+                    prev_info = pickle.load(f)
+
+        if not prev_info:
+            prev_info = get_info_base(logicode, trackno)
+        return prev_info
+
+    def save_track(self, logicode, trackno):
+        if self.use_db:
+            new_progs = []
+            self.info['prog'] = [[type(prog).__name__, *prog] for prog in self.info['prog']]
+            self.db_tracks.replace_one({'logicode': logicode, 'trackno': trackno}, self.info, upsert=True)
+        else:
+            with open(self.dumpfile_name, 'wb') as f:
+                pickle.dump(self.info, f, pickle.HIGHEST_PROTOCOL)
+                f.close()
 
     def fetch(self, logi, logicode, trackno, name, year):
         # actually here exist body
         info = logi.process(trackno, year)
-        prev_info = get_info_base()
 
         # read previous log history
         dumpfile_name = '{}/{}.{}'.format(self.cfg_db_dir, trackno, logicode)
-        if not isfile(dumpfile_name) or getfilesize(dumpfile_name) == 0:
-            prev_info = get_info_base()
-        else:
-            with open(dumpfile_name, 'rb') as f:
-                prev_info = pickle.load(f)
+        prev_info = self.get_track(logicode, trackno)
 
         # some progress may missing, so update it inrementally
         tmp_prog_info = list(prev_info['prog'])
@@ -154,7 +195,7 @@ class ParcelTracker():
                 else:
                     print(total_msg)
 
-                self.save_info()
+                self.save_track(logicode, trackno)
 
             self.proc_parcel(logi.next, trackno, name, year, checked)
 

@@ -1,4 +1,11 @@
 # copy this file to 'config.yaml' and fill the following entries
+database:
+  driver: file # support: file, mongodb
+  host: localhost
+  port: 27017
+  database: parcel-tracker
+  user: '' # '' mean no authentication required
+  pwd: ''
 telegram:
   token: '0000000000:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
   chat-id: -1000000000000

@@ -1,5 +1,6 @@
 natsort
 pycountry
+pymongo
 python-telegram-bot
 pyyaml
 requests

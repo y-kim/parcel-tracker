@@ -34,7 +34,7 @@ class Logistics(BaseLogistics):
 
         #if len(html_data) < 500:
         #    return
-        info = get_info_base()
+        info = get_info_base(self.code, trackno)
 
         for i in range(len(gen_th)):
             if type(gen_td[i].text) is str and len(gen_td[i].text.strip()) > 0:

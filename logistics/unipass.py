@@ -149,7 +149,7 @@ class Logistics(BaseLogistics):
         self.post['blYy'] = year
         self.fetch()
 
-        info = get_info_base()
+        info = get_info_base(self.code, trackno)
         if self.root['count'] == 1:
             info_raw = self.root['resultList'][0].copy()
             self.post['cargMtNo'] = info_raw['cargMtNo']
