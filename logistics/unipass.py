@@ -161,8 +161,8 @@ class Logistics(BaseLogistics):
                 if var is None or var == '':
                     continue
                 var = html.unescape(str(var))
-                if key in ('prcsDttm', ):
-                    var = var #datetime_to_str(var)
+                if key in ('prcsDttm', ): # 날짜, 시간 항목
+                    var = self.parse_time(var)
                 if key in self.uniitems:
                     if self.uniitems[key][1]:
                         info['info'][self.uniitems[key][0]] = var
