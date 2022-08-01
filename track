@@ -210,9 +210,15 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    # prepare configuration file
+    if not isfile(args.config):
+        raise Exception('Cannot find configration file {}'.format(args.config))
+    with open(args.config, 'r') as f:
+        config = yaml.load(f, Loader=yaml.SafeLoader)
+
     # print list of logistics
     if args.logistics:
-        tracker = ParcelTracker(None)
+        tracker = ParcelTracker(None, config)
 
         message = ['현재 지원하는 택배사입니다.']
         message.append('----------------------------------------')
@@ -234,12 +240,6 @@ if __name__ == '__main__':
         print('\n'.join(message))
 
         exit(0)
-
-    # prepare configuration file
-    if not isfile(args.config):
-        raise Exception('Cannot find configration file {}'.format(args.config))
-    with open(args.config, 'r') as f:
-        config = yaml.load(f, Loader=yaml.SafeLoader)
 
     # prepare Telegram bot
     if (args.upd_to_tg or args.err_to_tg) and not args.test:
