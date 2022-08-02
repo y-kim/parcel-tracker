@@ -124,7 +124,7 @@ class ParcelTracker():
         dumpfile_name = '{}/{}.{}'.format(self.cfg_db_dir, trackno, logicode)
         prev_info = self.get_track(logicode, trackno)
 
-        # some progress may missing, so update it inrementally
+        # some progress may missing, so update it incrementally [MERGE]
         tmp_prog_info = list(prev_info['prog'])
         for prog in info['prog']:
             if prog not in tmp_prog_info:
@@ -160,6 +160,7 @@ class ParcelTracker():
             msg.append('')
 
         prog_modified = False
+        # due to the progress MERGE, there is no modification. DELETE it or COMMENT it OUT
         for i in range(min(len(info['prog']), len(prev_info['prog']))):
             if info['prog'][i] != prev_info['prog'][i]:
                 msg.append('⇍ {}'.format(decorate_prog(prev_info['prog'][i])))
