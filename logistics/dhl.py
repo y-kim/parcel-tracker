@@ -3,12 +3,15 @@ import pycountry
 
 def get_address(addr):
     addr = addr['address']
+    items = []
     if 'addressLocality' in addr:
-        return addr['addressLocality']
-    elif 'countryCode' in addr:
-        return pycountry.countries.get(alpha_2=addr['countryCode']).name
-    else:
-        return str(addr)
+        items.append(addr['addressLocality'])
+    if 'postalCode' in addr:
+        items.append(addr['postalCode'])
+    if 'countryCode' in addr:
+        items.append(pycountry.countries.get(alpha_2=addr['countryCode']).name)
+
+    return ', '.join(items)
 
 def clean_desc(desc):
     sp = desc.find('(Homepage')
