@@ -64,4 +64,9 @@ class Logistics(BaseLogistics):
             else:
                 info['prog'].append(ProgV3(self.parse_time(time), po, code))
 
+        # Clean up 발송횟수 by deleting duplicated information
+        if '발송횟수' in info['info']:
+            info['info']['발송횟수'] = info['info']['발송횟수'].replace(info['info'].get('발송국', ''), '')
+            info['info']['발송횟수'] = info['info']['발송횟수'].replace(re.sub(r'\(.+\)', '', info['info'].get('도착예정 교환국', '')), '')
+
         return info
