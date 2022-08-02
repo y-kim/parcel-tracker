@@ -2,7 +2,7 @@
 
 import glob
 from argparse import ArgumentParser
-from datetime import date
+from datetime import date, datetime
 import importlib
 import logging
 from natsort import natsorted
@@ -141,14 +141,19 @@ class ParcelTracker():
         msg.append('%s (%s)' % (name, trackno))
         msg.append('')
 
+        def formatted_str(mystr):
+            if isinstance(mystr, datetime):
+                mystr = mystr.strftime('%m/%d %H:%M')
+            return mystr
+
         info_modified = False
         for key in info['info']:
             var = info['info'][key]
             if key not in prev_info['info']:
-                msg.append('%s: %s' % (key, var))
+                msg.append('%s: %s' % (key, formatted_str(var)))
                 info_modified = True
             elif var != prev_info['info'][key]:
-                msg.append('%s: %s → %s' % (key, prev_info['info'][key], var))
+                msg.append('%s: %s → %s' % (key, prev_info['info'][key], formatted_str(var)))
                 info_modified = True
 
         if info_modified:
