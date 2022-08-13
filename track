@@ -269,7 +269,7 @@ if __name__ == '__main__':
     if args.test:
         parcels = [{
             'Name': 'Name',
-            'LogiCode': args.test[0],
+            'LogiCodes': args.test[0],
             'TrackNo': args.test[1],
         }]
     else:
