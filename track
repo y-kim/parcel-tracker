@@ -192,16 +192,20 @@ class ParcelTracker():
                 print('등록되지 않은 택배사 코드입니다.')
                 return
             logi = self.logistics[logicode]
-            modified, msg = self.fetch(logi, logicode, trackno, name, year)
+            try:
+                modified, msg = self.fetch(logi, logicode, trackno, name, year)
+                if modified:
+                    total_msg = '\n'.join(msg)
+                    if self.tg:
+                        tg.send_message(total_msg)
+                    else:
+                        print(total_msg)
 
-            if modified:
-                total_msg = '\n'.join(msg)
-                if self.tg:
-                    tg.send_message(total_msg)
-                else:
-                    print(total_msg)
-
-                self.save_track(logicode, trackno)
+                    self.save_track(logicode, trackno)
+            except LogisticsInMaintenanceError:
+                print('Server in Maintenance')
+            except:
+                raise
 
             self.proc_parcel(logi.next, trackno, name, year, checked)
 

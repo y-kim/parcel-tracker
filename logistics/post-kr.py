@@ -23,7 +23,13 @@ class Logistics(BaseLogistics):
         self.fetch(True)
 
         # general information
-        gen_info = self.root.xpath('//table[@class="table_col ma_b_5"]')[0]
+        try:
+            gen_info = self.root.xpath('//table[@class="table_col ma_b_5"]')[0]
+        except:
+            if 'window.open("http://www.epost.go.kr/popup/main_notice.html",\'_self\')' in self.text:
+                raise LogisticsInMaintenanceError
+            else:
+                raise
         gen_th = gen_info.xpath('./thead//th')
         gen_td = gen_info.xpath('./tbody//th|./tbody//td')
 
