@@ -41,8 +41,10 @@ def decorate_prog(prog):
 
     return decorated
 
-def strip_spaces(text):
+def merge_spaces(text):
     return re.sub(r'\s+', ' ', text.strip())
+
+strip_spaces = merge_spaces
 
 def remove_pre0(zerotext):
     return re.sub('0(\d+)', r'\1', zerotext)
