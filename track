@@ -204,7 +204,9 @@ class ParcelTracker():
                     if not self.config['test']:
                         self.save_track(logicode, trackno)
             except LogisticsInMaintenanceError:
-                print('Server in Maintenance')
+                print('LogisticsInMaintenanceError')
+            except NoInformationError:
+                print('NoInformationError')
             except:
                 raise
 

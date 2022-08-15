@@ -105,6 +105,8 @@ class LogisticsInMaintenanceError(Exception):
     def __init__(self):
         super().__init__('The logistics server reported maintanance.')
 
+class NoInformationError(Exception): pass
+
 # Logistics
 class BaseLogistics():
     def __init__(self, tracker):
