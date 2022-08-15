@@ -6,7 +6,6 @@ class Logistics(BaseLogistics):
         super(Logistics, self).__init__(tracker)
         self.code = 'regmail-kr'
         self.name = '대한민국 등기'
-        self.next = ('unipass-ems',)
 
         self.timef = '%Y.%m.%d %H:%M'
 
