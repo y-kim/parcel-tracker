@@ -9,6 +9,7 @@ ProgV2 = namedtuple('ProgV2', 'dt desc')
 ProgV3 = namedtuple('ProgV3', 'dt loc desc')
 ProgV4 = namedtuple('ProgV4', 'dt loc desc desc2')
 ProgV5 = namedtuple('ProgV5', 'dt code desc')
+ProgV6 = namedtuple('ProgV6', 'dt loc desc') # dt -> date
 
 namedtuple_map = {
     'ProgV1': ProgV1,
@@ -16,6 +17,7 @@ namedtuple_map = {
     'ProgV3': ProgV3,
     'ProgV4': ProgV4,
     'ProgV5': ProgV5,
+    'ProgV6': ProgV6,
 }
 
 def make_namedtuple(data):
@@ -23,6 +25,7 @@ def make_namedtuple(data):
 
 def decorate_prog(prog):
     dt = prog.dt.strftime('%m/%d %H:%M')
+    date = prog.dt.strftime('%m/%d')
     if isinstance(prog, ProgV1):
         decorated = '{} ({}) - [{}] {}'.format(dt, prog.loc, prog.code, prog.desc)
     elif isinstance(prog, ProgV2):
@@ -33,6 +36,8 @@ def decorate_prog(prog):
         decorated = '{} ({}) - {} / {}'.format(dt, prog.loc, prog.desc, prog.desc2)
     elif isinstance(prog, ProgV5):
         decorated = '{} - [{}] {}'.format(dt, prog.code, prog.desc)
+    elif isinstance(prog, ProgV6):
+        decorated = '{} ({}) - {}'.format(date, prog.loc, prog.desc)
 
     return decorated
 
@@ -142,6 +147,9 @@ class BaseLogistics():
 
     def get_name(self):
         return self.name
+
+    def parse_date(self, date):
+        return datetime.strptime(date, self.datef)
 
     def parse_time(self, time):
         return datetime.strptime(time, self.timef)
