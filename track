@@ -201,7 +201,8 @@ class ParcelTracker():
                     else:
                         print(total_msg)
 
-                    self.save_track(logicode, trackno)
+                    if not self.config['test']:
+                        self.save_track(logicode, trackno)
             except LogisticsInMaintenanceError:
                 print('Server in Maintenance')
             except:
@@ -225,6 +226,7 @@ if __name__ == '__main__':
         raise Exception('Cannot find configration file {}'.format(args.config))
     with open(args.config, 'r') as f:
         config = yaml.load(f, Loader=yaml.SafeLoader)
+        config['test'] = args.test
 
     # print list of logistics
     if args.logistics:
