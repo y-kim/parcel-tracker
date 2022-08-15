@@ -299,7 +299,7 @@ if __name__ == '__main__':
     parser.add_argument('-u', '--upd-to-tg', action='store_true', help='send delivery status into the telegram channel in the configuraion')
     parser.add_argument('-e', '--err-to-tg', action='store_true', help='emit error messages to the telegram channel in the configuration')
     parser.add_argument('-l', '--logistics', action='store_true', help='print list of logistics')
-    parser.add_argument('-t', '--test', nargs=2, metavar=('LOGICODE', 'TRAKNONO'), help='track configured tracking number only')
+    parser.add_argument('-t', '--test', nargs=2, metavar=('LOGICODE', 'TRACKNO'), help='track configured tracking number only')
 
     args = parser.parse_args()
 
