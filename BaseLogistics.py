@@ -101,11 +101,13 @@ def denormalize_month(nmonth):
     return year, month
 
 # Exceptions
-class LogisticsInMaintenanceError(Exception):
+class LogisticsError(Exception): pass
+class ParcelError(Exception): pass
+class LogisticsInMaintenanceError(LogisticsError):
     def __init__(self):
         super().__init__('The logistics server reported maintanance.')
 
-class NoInformationError(Exception): pass
+class NoInformationError(ParcelError): pass
 
 # Logistics
 class BaseLogistics():

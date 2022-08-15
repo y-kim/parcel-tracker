@@ -2,7 +2,7 @@
 
 import glob
 from argparse import ArgumentParser
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import importlib
 import logging
 from natsort import natsorted
@@ -17,6 +17,8 @@ import yaml
 
 from BaseLogistics import *
 from MyTelegram import Telegram, TelegramHandler
+
+ONEDAY=timedelta(hours=23,minutes=55)
 
 def my_excepthook(logger, typ, value, err_trace):
     logger.critical(u"%s: %s\n\nTraceback: %s" % (typ.__name__, value, ''.join(traceback.format_tb(err_trace))));
@@ -37,6 +39,8 @@ class ParcelTracker():
         self.airlines_dir = 'airlines'
         self.airlines = {}
         self.airlines_disabled = {}
+
+        self.parcel_errors = []
 
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0',
@@ -84,7 +88,7 @@ class ParcelTracker():
             client = pymongo.MongoClient('mongodb://{auth}{host}:{port}/{database}'.format(auth=auth, **db_cfg))
             db = client[db_cfg['database']]
             self.db_tracks = db.tracks
-            self.db_logics = db.logis
+            self.db_errors = db.errors
 
             return True
         else:
@@ -119,6 +123,8 @@ class ParcelTracker():
     def fetch(self, logi, logicode, trackno, name, year):
         # actually here exist body
         info = logi.process(trackno, year)
+        if not (info['info'] or info['prog']):
+            raise NoInformationError
 
         # read previous log history
         dumpfile_name = '{}/{}.{}'.format(self.cfg_db_dir, trackno, logicode)
@@ -176,7 +182,8 @@ class ParcelTracker():
 
         return info_modified or prog_modified, msg
 
-    def proc_parcel(self, logicodes, trackno, name, year, checked=set()):
+    def proc_parcel(self, logicodes, trackno, name, year, checked=set(), is_top=True):
+
         for logicode in logicodes:
             if logicode in checked:
                 continue
@@ -191,26 +198,99 @@ class ParcelTracker():
             elif logicode not in self.logistics:
                 print('등록되지 않은 택배사 코드입니다.')
                 return
+
+            errcode = False
             logi = self.logistics[logicode]
             try:
                 modified, msg = self.fetch(logi, logicode, trackno, name, year)
                 if modified:
                     total_msg = '\n'.join(msg)
                     if self.tg:
-                        tg.send_message(total_msg)
+                        self.tg.send_message(total_msg)
                     else:
                         print(total_msg)
 
                     if not self.config['test']:
                         self.save_track(logicode, trackno)
-            except LogisticsInMaintenanceError:
-                print('LogisticsInMaintenanceError')
-            except NoInformationError:
-                print('NoInformationError')
-            except:
-                raise
+            except Exception as e:
+                if isinstance(e, LogisticsError):
+                    if isinstance(e, LogisticsInMaintenanceError):
+                        print('LogisticsInMaintenanceError')
+                    else:
+                        raise
+                elif isinstance(e, ParcelError):
+                    if isinstance(e, NoInformationError):
+                        errcode = 'NoInformationError'
+                    else:
+                        raise
+                    print(errcode)
+                else:
+                    raise
 
-            self.proc_parcel(logi.next, trackno, name, year, checked)
+            self.parcel_errors.append({
+                'logicode': logicode,
+                'errcode': errcode,
+            })
+
+            self.proc_parcel(logi.next, trackno, name, year, checked, False)
+
+        if is_top:
+            self.report_parcel_errors(trackno, name)
+
+    def report_parcel_errors(self, trackno, name):
+        # Agile implementation. Refactoring will be followed.
+        # The complexity may come from how proc_parcel is called. I will mode the calling part into the class
+
+        db_errors = []
+        msg = []
+        now = datetime.now()
+        for error in self.parcel_errors:
+            logicode = error['logicode']
+            errcode = error['errcode']
+
+            if not errcode:
+                # no error happens. deactive all present errors
+                prev_errors = self.db_errors.find({'logicode': logicode, 'trackno': trackno, 'active': True})
+                for perror in prev_errors:
+                    perror['active'] = False
+                    db_errors.append(perror)
+            else:
+                nerror = {
+                    'logicode': logicode,
+                    'trackno': trackno,
+                    'errcode': errcode,
+                    'started_at': now,
+                    'lasted_until': now,
+                    'reported_at': now,
+                    'active': True,
+                }
+                prev_error = self.db_errors.find_one({'logicode': logicode, 'trackno': trackno, 'errcode': errcode})
+                if prev_error:
+                    nerror['reported_at'] = prev_error['reported_at']
+                    if prev_error['active']:
+                        nerror['started_at'] = prev_error['started_at']
+                if not prev_error or (now - nerror['reported_at'] >= ONEDAY):
+                    delta = (now - nerror['started_at'])
+                    days = delta.days + round(delta.seconds/(60*60*24))
+                    msg.append('{}: {} ({}) - {} days'.format(errcode, self.logistics[logicode].get_name(), logicode, days))
+                    nerror['reported_at'] = now
+
+                db_errors.append(nerror)
+
+        if msg:
+            msg.insert(0, 'Parcel Tracker Errors')
+            msg.insert(1, '{} ({})'.format(name, trackno))
+            msg.insert(2, '')
+            msg = '\n'.join(msg)
+            if self.config['err-to-tg']:
+                self.tg.send_message(msg, self.config['telegram']['err-chat-id'])
+            else:
+                print(msg)
+
+        for error in db_errors:
+            self.db_errors.replace_one({'logicode': error['logicode'], 'trackno': error['trackno'], 'errcode': error['errcode']}, error, upsert=True)
+
+        self.parcel_errors = []
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='tracks internationl deliveries without risk of information leakage into 3rd parties')
@@ -229,6 +309,7 @@ if __name__ == '__main__':
     with open(args.config, 'r') as f:
         config = yaml.load(f, Loader=yaml.SafeLoader)
         config['test'] = args.test
+        config['err-to-tg'] = args.err_to_tg
 
     # print list of logistics
     if args.logistics:
