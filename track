@@ -370,4 +370,4 @@ if __name__ == '__main__':
     if parcels:
         for parcel in parcels:
             logicodes = (x.strip() for x in parcel['LogiCodes'].split(','))
-            tracker.proc_parcel(logicodes, parcel['TrackNo'], parcel['Name'], parcel.get('Year', this_year), set())
+            tracker.proc_parcel(logicodes, str(parcel['TrackNo']), parcel['Name'], parcel.get('Year', this_year), set())
