@@ -337,7 +337,7 @@ if __name__ == '__main__':
         exit(0)
 
     # prepare Telegram bot
-    if (args.upd_to_tg or args.err_to_tg) and not args.test:
+    if args.upd_to_tg or args.err_to_tg:
         tg = Telegram(config['telegram']['token'], config['telegram']['chat-id'], '해외 배송 소식')
 
         if args.err_to_tg:
