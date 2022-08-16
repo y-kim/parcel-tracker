@@ -41,8 +41,6 @@ class ParcelTracker():
         self.airlines = {}
         self.airlines_disabled = {}
 
-        self.parcel_errors = []
-
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -107,11 +105,11 @@ class ParcelTracker():
             prev_info = get_info_base(logicode, trackno)
         return prev_info
 
-    def save_track(self, logicode, trackno):
+    def save_track(self, logicode, trackno, info):
         if self.use_db:
             new_progs = []
-            self.info['prog'] = [[type(prog).__name__, *prog] for prog in self.info['prog']]
-            self.db_tracks.replace_one({'logicode': logicode, 'trackno': trackno}, self.info, upsert=True)
+            info['prog'] = [[type(prog).__name__, *prog] for prog in info['prog']]
+            self.db_tracks.replace_one({'logicode': logicode, 'trackno': trackno}, info, upsert=True)
 
     def create_message(self, logi, name, trackno, prev_info, info):
         def formatted_str(mystr):
@@ -142,7 +140,8 @@ class ParcelTracker():
 
         return header+msg1+msg2
 
-    def proc_parcel(self, logicodes, trackno, name, year, checked=set(), is_top=True):
+    def proc_parcel(self, logicodes, trackno, name, year, checked=set()):
+        parcel_errors = []
 
         for logicode in logicodes:
             if logicode in checked:
@@ -186,7 +185,7 @@ class ParcelTracker():
                         print(total_msg)
 
                     if not self.config['test']:
-                        self.save_track(logicode, trackno)
+                        self.save_track(logicode, trackno, info)
             except Exception as e:
                 if isinstance(e, LogisticsError):
                     if isinstance(e, LogisticsInMaintenanceError):
@@ -202,29 +201,32 @@ class ParcelTracker():
                 else:
                     raise
 
-            self.parcel_errors.append({
+            parcel_errors.append({
                 'logicode': logicode,
                 'errcode': errcode,
             })
 
-            self.proc_parcel(logi.next, trackno, name, year, checked, False)
+            # handling next logistics
+            parcel_errors.extend(self.proc_parcel(logi.next, trackno, name, year, checked))
 
-        if is_top:
-            self.report_parcel_errors(trackno, name)
+        return parcel_errors
 
     def process(self, parcels):
         for parcel in parcels:
             logicodes = (x.strip() for x in parcel['LogiCodes'].split(','))
-            self.proc_parcel(logicodes, str(parcel['TrackNo']), parcel['Name'], parcel.get('Year', self.this_year), set())
+            trackno = str(parcel['TrackNo'])
+            name = parcel['Name']
+            parcel_errors = self.proc_parcel(logicodes, trackno, name, parcel.get('Year', self.this_year), set())
+            self.report_parcel_errors(trackno, name, parcel_errors)
 
-    def report_parcel_errors(self, trackno, name):
+    def report_parcel_errors(self, trackno, name, parcel_errors):
         # Agile implementation. Refactoring will be followed.
         # The complexity may come from how proc_parcel is called. I will mode the calling part into the class
 
         db_errors = []
         msg = []
         now = datetime.now()
-        for error in self.parcel_errors:
+        for error in parcel_errors:
             logicode = error['logicode']
             errcode = error['errcode']
 
@@ -269,8 +271,6 @@ class ParcelTracker():
 
         for error in db_errors:
             self.db_errors.replace_one({'logicode': error['logicode'], 'trackno': error['trackno'], 'errcode': error['errcode']}, error, upsert=True)
-
-        self.parcel_errors = []
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='tracks internationl deliveries without risk of information leakage into 3rd parties')
