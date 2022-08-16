@@ -36,12 +36,18 @@ class Logistics(BaseLogistics):
             date = tds[0].text_content().strip()
             time = tds[1].text_content().strip()
             location = tds[2].text_content().strip()
-            detail = tds[3].text.strip()
+            try:
+                detail = tds[3].text.strip()
+            except:
+                # Ignore empty rows
+                continue
             if time:
                 dt = self.parse_time('{} {}'.format(date, time))
                 info['prog'].append(ProgV3(dt, location, detail))
-            else:
+            elif date:
                 date = self.parse_date(date)
                 info['prog'].append(ProgV6(date, location, detail))
+            else:
+                info['prog'].append(ProgV3(None, location, detail))
 
         return info
