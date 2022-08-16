@@ -30,6 +30,7 @@ class ParcelTracker():
         self.cfg_timeout = 2
         self.cfg_db_dir = 'db'
         self.config = config
+        self.this_year = date.today().strftime('y')
 
         self.tg = tg
 
@@ -112,65 +113,34 @@ class ParcelTracker():
             self.info['prog'] = [[type(prog).__name__, *prog] for prog in self.info['prog']]
             self.db_tracks.replace_one({'logicode': logicode, 'trackno': trackno}, self.info, upsert=True)
 
-    def fetch(self, logi, logicode, trackno, name, year):
-        # actually here exist body
-        info = logi.process(trackno, year)
-        if not (info['info'] or info['prog']):
-            raise NoInformationError
-
-        # read previous log history
-        prev_info = self.get_track(logicode, trackno)
-
-        # some progress may missing, so update it incrementally [MERGE]
-        tmp_prog_info = list(prev_info['prog'])
-        for prog in info['prog']:
-            if prog not in tmp_prog_info:
-                tmp_prog_info.append(prog)
-        info['prog'] = tmp_prog_info
-
-        # save information into class. data will be save after sending message into Telegram or stdout
-        self.info = info
-
-        # creage message
-        msg = []
-        msg.append(logi.get_name())
-        msg.append('%s (%s)' % (name, trackno))
-        msg.append('')
-
+    def create_message(self, logi, name, trackno, prev_info, info):
         def formatted_str(mystr):
             if isinstance(mystr, datetime):
                 mystr = mystr.strftime('%m/%d %H:%M')
             return mystr
 
-        info_modified = False
+        header = []
+        msg1 = []
+        msg2 = []
+
         for key in info['info']:
             var = info['info'][key]
             if key not in prev_info['info']:
-                msg.append('%s: %s' % (key, formatted_str(var)))
-                info_modified = True
+                msg1.append('%s: %s' % (key, formatted_str(var)))
             elif var != prev_info['info'][key]:
-                msg.append('%s: %s → %s' % (key, prev_info['info'][key], formatted_str(var)))
-                info_modified = True
-
-        if info_modified:
-            msg.append('')
-
-        prog_modified = False
-        # due to the progress MERGE, there is no modification. DELETE it or COMMENT it OUT
-        for i in range(min(len(info['prog']), len(prev_info['prog']))):
-            if info['prog'][i] != prev_info['prog'][i]:
-                msg.append('⇍ {}'.format(decorate_prog(prev_info['prog'][i])))
-                msg.append('⇒ {}'.format(decorate_prog(info['prog'][i])))
-                prog_modified = True
+                msg1.append('%s: %s → %s' % (key, formatted_str(prev_info['info'][key]), formatted_str(var)))
 
         for i in range(len(prev_info['prog']), len(info['prog'])):
-            msg.append('⦁ {}'.format(decorate_prog(info['prog'][i])))
-            prog_modified = True
+            msg2.append('⦁ {}'.format(decorate_prog(info['prog'][i])))
 
-        if prog_modified:
-            msg.append('')
+        if msg1 or msg2:
+            header.append(logi.get_name())
+            header.append('%s (%s)' % (name, trackno))
+            header.append('')
+            if msg1 and msg2:
+                msg1.append('')
 
-        return info_modified or prog_modified, msg
+        return header+msg1+msg2
 
     def proc_parcel(self, logicodes, trackno, name, year, checked=set(), is_top=True):
 
@@ -191,9 +161,24 @@ class ParcelTracker():
 
             errcode = False
             logi = self.logistics[logicode]
+
+            # read previous log history
+            prev_info = self.get_track(logicode, trackno)
+
             try:
-                modified, msg = self.fetch(logi, logicode, trackno, name, year)
-                if modified:
+                info = logi.process(trackno, year)
+                if not (info['info'] or info['prog']):
+                    raise NoInformationError
+
+                # some progress may missing, so update it incrementally
+                tmp_prog_info = list(prev_info['prog'])
+                for prog in info['prog']:
+                    if prog not in tmp_prog_info:
+                        tmp_prog_info.append(prog)
+                info['prog'] = tmp_prog_info
+
+                msg = self.create_message(logi, name, trackno, prev_info, info)
+                if msg:
                     total_msg = '\n'.join(msg)
                     if self.tg:
                         self.tg.send_message(total_msg)
@@ -226,6 +211,11 @@ class ParcelTracker():
 
         if is_top:
             self.report_parcel_errors(trackno, name)
+
+    def process(self, parcels):
+        for parcel in parcels:
+            logicodes = (x.strip() for x in parcel['LogiCodes'].split(','))
+            self.proc_parcel(logicodes, str(parcel['TrackNo']), parcel['Name'], parcel.get('Year', self.this_year), set())
 
     def report_parcel_errors(self, trackno, name):
         # Agile implementation. Refactoring will be followed.
@@ -355,9 +345,4 @@ if __name__ == '__main__':
 
     # prepare tracker
     tracker = ParcelTracker(tg, config)
-    this_year = date.today().strftime('y') 
-
-    if parcels:
-        for parcel in parcels:
-            logicodes = (x.strip() for x in parcel['LogiCodes'].split(','))
-            tracker.proc_parcel(logicodes, str(parcel['TrackNo']), parcel['Name'], parcel.get('Year', this_year), set())
+    tracker.process(parcels)
