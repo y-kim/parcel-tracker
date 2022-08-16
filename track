@@ -73,6 +73,8 @@ class ParcelTracker():
 
         #initialize database
         self.use_db = self.__init_db()
+        if not self.use_db:
+            raise Exception('Please configure mongodb')
 
     def __init_db(self):
         # connection to DB
@@ -99,12 +101,6 @@ class ParcelTracker():
             prev_info = self.db_tracks.find_one({'logicode': logicode, 'trackno': trackno})
             if prev_info:
                 prev_info['prog'] = [make_namedtuple(prog) for prog in prev_info['prog']]
-        else:
-            if not isfile(dumpfile_name) or getfilesize(dumpfile_name) == 0:
-                prev_info = None
-            else:
-                with open(dumpfile_name, 'rb') as f:
-                    prev_info = pickle.load(f)
 
         if not prev_info:
             prev_info = get_info_base(logicode, trackno)
@@ -115,10 +111,6 @@ class ParcelTracker():
             new_progs = []
             self.info['prog'] = [[type(prog).__name__, *prog] for prog in self.info['prog']]
             self.db_tracks.replace_one({'logicode': logicode, 'trackno': trackno}, self.info, upsert=True)
-        else:
-            with open(self.dumpfile_name, 'wb') as f:
-                pickle.dump(self.info, f, pickle.HIGHEST_PROTOCOL)
-                f.close()
 
     def fetch(self, logi, logicode, trackno, name, year):
         # actually here exist body
@@ -127,7 +119,6 @@ class ParcelTracker():
             raise NoInformationError
 
         # read previous log history
-        dumpfile_name = '{}/{}.{}'.format(self.cfg_db_dir, trackno, logicode)
         prev_info = self.get_track(logicode, trackno)
 
         # some progress may missing, so update it incrementally [MERGE]
@@ -139,7 +130,6 @@ class ParcelTracker():
 
         # save information into class. data will be save after sending message into Telegram or stdout
         self.info = info
-        self.dumpfile_name = dumpfile_name
 
         # creage message
         msg = []
