@@ -111,6 +111,7 @@ class LogisticsInMaintenanceError(LogisticsError):
     def __init__(self):
         super().__init__('The logistics server reported maintanance.')
 
+class ParserError(LogisticsError): pass
 class NoInformationError(ParcelError): pass
 
 # Logistics
