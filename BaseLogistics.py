@@ -24,8 +24,12 @@ def make_namedtuple(data):
     return namedtuple_map[data[0]](*data[1:])
 
 def decorate_prog(prog):
-    dt = prog.dt.strftime('%m/%d %H:%M')
-    date = prog.dt.strftime('%m/%d')
+    try:
+        dt = prog.dt.strftime('%m/%d %H:%M')
+        date = prog.dt.strftime('%m/%d')
+    except:
+        dt = ''
+        date = ''
     if isinstance(prog, ProgV1):
         decorated = '{} ({}) - [{}] {}'.format(dt, prog.loc, prog.code, prog.desc)
     elif isinstance(prog, ProgV2):
@@ -39,7 +43,7 @@ def decorate_prog(prog):
     elif isinstance(prog, ProgV6):
         decorated = '{} ({}) - {}'.format(date, prog.loc, prog.desc)
 
-    return decorated
+    return decorated.strip()
 
 def merge_spaces(text):
     return re.sub(r'\s+', ' ', text.strip())
