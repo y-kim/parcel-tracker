@@ -120,6 +120,7 @@ class BaseLogistics():
         self.disabled = False
 
         self.encoding = 'utf-8'
+        self.mbl_name = ''
 
         self.cfg_save_raw = tracker.cfg_save_raw
         self.cfg_raw_dir = tracker.cfg_raw_dir

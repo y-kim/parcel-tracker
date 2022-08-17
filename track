@@ -40,6 +40,7 @@ class ParcelTracker():
         self.airlines_dir = 'airlines'
         self.airlines = {}
         self.airlines_disabled = {}
+        self.cargo_prefixes= {}
 
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0',
@@ -69,6 +70,8 @@ class ParcelTracker():
                     self.airlines_disabled[plugin.get_code()] = plugin
                 else:
                     self.airlines[plugin.get_code()] = plugin
+                    for prefix in plugin.prefixes:
+                        self.cargo_prefixes[prefix] = plugin
 
         #initialize database
         self.use_db = self.__init_db()
@@ -140,7 +143,7 @@ class ParcelTracker():
 
         return header+msg1+msg2
 
-    def proc_parcel(self, logicodes, trackno, name, year, checked=set()):
+    def proc_parcel(self, logicodes, trackno, name, year, checked=set(), cargo=False):
         parcel_errors = []
 
         for logicode in logicodes:
@@ -151,15 +154,26 @@ class ParcelTracker():
 
             print('Processing: {} / {}, {}'.format(name, trackno, logicode))
 
-            if logicode in self.logistics_disabled:
-                print('더 이상 지원하지 않는 택배사입니다.')
-                return
-            elif logicode not in self.logistics:
-                print('등록되지 않은 택배사 코드입니다.')
-                return
+            if cargo:
+                if logicode in self.airlines_disabled:
+                    print('더 이상 지원하지 않는 택배사입니다.')
+                    return
+                elif logicode not in self.airlines:
+                    print('등록되지 않은 택배사 코드입니다.')
+                    return
+            else:
+                if logicode in self.logistics_disabled:
+                    print('더 이상 지원하지 않는 택배사입니다.')
+                    return
+                elif logicode not in self.logistics:
+                    print('등록되지 않은 택배사 코드입니다.')
+                    return
 
             errcode = False
-            logi = self.logistics[logicode]
+            if cargo:
+                logi = self.airlines[logicode]
+            else:
+                logi = self.logistics[logicode]
 
             # read previous log history
             prev_info = self.get_track(logicode, trackno)
@@ -206,10 +220,26 @@ class ParcelTracker():
                 'errcode': errcode,
             })
 
+            # handling airlines
+            airline, mbl = self.preproc_airline(logi, name, year, info)
+            if airline and not cargo:
+                parcel_errors.extend(self.proc_parcel([airline], mbl, name, year, checked, True))
+
             # handling next logistics
             parcel_errors.extend(self.proc_parcel(logi.next, trackno, name, year, checked))
 
         return parcel_errors
+
+    def preproc_airline(self, logi, name, year, info):
+        mbl =  info['info'].get(logi.mbl_name, None)
+        if mbl:
+            # remove non decimal
+            mbl = re.sub('[^\d]+', '', mbl)
+            prefix = mbl[0:3]
+            if prefix in self.cargo_prefixes:
+                return self.cargo_prefixes[prefix].get_code(), mbl
+
+        return None, None
 
     def process(self, parcels):
         for parcel in parcels:
