@@ -42,6 +42,7 @@ class Logistics(BaseLogistics):
             'ttwgUtCd': '총중량 단위',
             'aprvDt': '통관일자',
             'adupTxTrgtTpcd': '합산과세여부',
+            'txPrcWncrTamt': '총과세가격',
             'tamt': '세액',
             'homeDelivery': '통관절차대행수수료',
             'alSum': '합계',
