@@ -340,6 +340,12 @@ if __name__ == '__main__':
             message.append('{:10s} {}'.format(key, tracker.logistics[key].get_name()))
 
         message.append('')
+        message.append('현재 지원하는 항공편입니다.')
+        message.append('----------------------------------------')
+        for key in sorted(tracker.airlines):
+            message.append('{:10s} {}'.format(key, tracker.airlines[key].get_name()))
+
+        message.append('')
         message.append('더이상 지원하지 않는 택배사입니다.')
         message.append('----------------------------------------')
         for key in sorted(tracker.logistics_disabled):
