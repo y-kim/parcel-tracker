@@ -3,8 +3,8 @@ from BaseLogistics import *
 class Logistics(BaseLogistics):
     def __init__(self, tracker):
         super(Logistics, self).__init__(tracker)
-        self.code = 'doortodoor'
-        self.name = '대한통운'
+        self.code = 'cj'
+        self.name = 'CJ대한통운'
 
         self.mbl_name = 'MAWB No.'
         self.timef = '%Y-%m-%d %H:%M:%S'
