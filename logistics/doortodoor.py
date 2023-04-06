@@ -5,7 +5,9 @@ class Logistics(BaseLogistics):
         super(Logistics, self).__init__(tracker)
         self.code = 'doortodoor'
         self.name = '대한통운'
-        self.disabled = True
+
+        self.mbl_name = 'MAWB No.'
+        self.timef = '%Y-%m-%d %H:%M:%S'
 
         self.add_query(
             'get', 'html',
@@ -19,12 +21,14 @@ class Logistics(BaseLogistics):
             }
         )
 
-    def process(self, pid, year):
-        self.params['rqs_HAWB_NO'] = pid
+    def process(self, trackno, year):
+        self.params['rqs_HAWB_NO'] = trackno
         self.fetch(True)
 
-        info = get_info_base()
-        info['info']['HBL'] = str(pid);
+        indo_added = False
+
+        info = get_info_base(self.code, trackno)
+        info['info']['HBL'] = str(trackno);
 
         if not 'HBL NO. NONEXISTENT' in self.text and not "We didn't find any matches for" in self.text:
             general_information = self.root.xpath('//table')[0]
@@ -39,6 +43,7 @@ class Logistics(BaseLogistics):
 
             for i in range(len(gen_th)):
                 if type(gen_td[i].text) is str and len(gen_td[i].text.strip()) > 0:
+                    info_added = True
                     info['info'][gen_th[i].text.strip()] = gen_td[i].text.strip()
 
             oversea_trs = oversea_delivery_status.xpath('.//tr')
@@ -47,10 +52,11 @@ class Logistics(BaseLogistics):
                 message = re.sub(r'^.+?\((.+?)\)$', r'\1', oversea_tr.xpath('.//td')[0].text_content().strip())
                 time = oversea_tr.xpath('.//td')[1].text_content().strip()
                 if type(time) is str and len(time) > 0:
-                    info['prog'].append('%s %s - %s' % (time[5:10], time[11:], message))
+                    info['prog'].append(ProgV2(self.parse_time(time), message))
 
-        self.params['pTdNo'] = pid
+        self.params['pTdNo'] = trackno
         if not info_added and not '시스템 점검' in self.text:
+            raise Exception('when this is happened?')
             info_table = self.root.xpath('//table')[0]
             ths = info_table.xpath('.//th')
             tds = info_table.xpath('.//td')
@@ -65,7 +71,9 @@ class Logistics(BaseLogistics):
                         index += '*'
                     info['info'][index] = text
 
+        self.fetch()
         if ('검색된 결과값이 없습니다' not in self.text) and ('시스템 점검' not in self.text):
+            raise Exception('이건 또 언제 나오지?')
             trs = self.root.xpath('//tbody')[1].xpath('.//tr')
             for tr in trs:
                 tds = tr.xpath('.//td')
