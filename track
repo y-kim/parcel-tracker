@@ -293,7 +293,7 @@ class ParcelTracker():
                 if not prev_error or (now - nerror['reported_at'] >= ONEDAY):
                     delta = (now - nerror['started_at'])
                     days = delta.days + round(delta.seconds/(60*60*24))
-                    msg.append('{}: {} ({}) - {} days'.format(errcode, self.logistics[logicode].get_name(), logicode, days))
+                    msg.append('{}: {} ({}) - {} days'.format(errcode, self.logistics.get(logicode, self.airlines.get(logicode, 'unknown')).get_name(), logicode, days))
                     nerror['reported_at'] = now
 
                 db_errors.append(nerror)
