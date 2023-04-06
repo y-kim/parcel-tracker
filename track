@@ -157,17 +157,17 @@ class ParcelTracker():
             if cargo:
                 if logicode in self.airlines_disabled:
                     print('더 이상 지원하지 않는 택배사입니다.')
-                    return
+                    return parcel_errors
                 elif logicode not in self.airlines:
                     print('등록되지 않은 택배사 코드입니다.')
-                    return
+                    return parcel_errors
             else:
                 if logicode in self.logistics_disabled:
                     print('더 이상 지원하지 않는 택배사입니다.')
-                    return
+                    return parcel_errors
                 elif logicode not in self.logistics:
                     print('등록되지 않은 택배사 코드입니다.')
-                    return
+                    return parcel_errors
 
             errcode = False
             if cargo:
