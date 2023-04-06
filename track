@@ -212,6 +212,15 @@ class ParcelTracker():
                     else:
                         raise
                     print(errcode)
+                elif isinstance(e, KeyError):
+                    errcode = 'ParsingError'
+                    print(errcode)
+                elif isinstance(e, requests.exceptions.SSLError):
+                    errcode = 'SSL Error'
+                    print(errcode)
+                elif isinstance(e, requests.exceptions.ConnectionError):
+                    errcode = 'Connection Error'
+                    print(errcode)
                 else:
                     raise
 
