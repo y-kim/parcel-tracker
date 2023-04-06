@@ -230,9 +230,10 @@ class ParcelTracker():
             })
 
             # handling airlines
-            airline, mbl = self.preproc_airline(logi, name, year, info)
-            if airline and not cargo:
-                parcel_errors.extend(self.proc_parcel([airline], mbl, name, year, checked, True))
+            if 'info' in locals():
+                airline, mbl = self.preproc_airline(logi, name, year, info)
+                if airline and not cargo:
+                    parcel_errors.extend(self.proc_parcel([airline], mbl, name, year, checked, True))
 
             # handling next logistics
             parcel_errors.extend(self.proc_parcel(logi.next, trackno, name, year, checked))
