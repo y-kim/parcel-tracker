@@ -5,6 +5,7 @@ class Logistics(BaseLogistics):
         super(Logistics, self).__init__(tracker)
         self.code = 'cj'
         self.name = 'CJ대한통운'
+        self.next = ('unipass',)
 
         self.mbl_name = 'MAWB No.'
         self.timef = '%Y-%m-%d %H:%M:%S'
