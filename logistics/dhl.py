@@ -74,7 +74,8 @@ class Logistics(BaseLogistics):
             info['info']['출발지'] = get_address(ship['origin'])
             info['info']['도착지'] = get_address(ship['destination'])
             info['info']['무게'] = '{value} {unitText}'.format(**ship['details']['weight'])
-            info['info']['현위치'] = get_address(ship['status']['location'])
+            if 'location' in ship['status']:
+                info['info']['현위치'] = get_address(ship['status']['location'])
             info['info']['상태'] = self.status_code.get(ship['status']['statusCode'], ship['status']['statusCode'])
             info['info']['시간'] = self.parse_time(ship['status']['timestamp'])
             if 'estimatedTimeOfDelivery' in ship:
