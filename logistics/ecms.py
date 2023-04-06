@@ -14,11 +14,11 @@ class Logistics(BaseLogistics):
             }
         )
 
-    def process(self, pid, year):
-        self.params['trackingno'] = pid
+    def process(self, trackno, year):
+        self.params['trackingno'] = trackno
         self.fetch(True)
 
-        info = self.get_info_base()
+        info = get_info_base(self.code, trackno)
         first_time = None
         last_time = None
         if not 'We have not yet received' in self.text:
